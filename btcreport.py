@@ -38,45 +38,45 @@ def round_down(n, decimals=0):
     return math.floor(n * multiplier) / multiplier
 
 with open(report_name) as csv_file:
-	total_purchase = 0
-	total_btc = 0
-	btc_in_custody = 0
-	total_transactions = 0
-	btc_price = 0
-	avg_btc_price = 0
-	data = csv.DictReader(csv_file)
-	for record in data:
-		if record["Transaction Type"] == "Bitcoin Buy":
-			total_purchase += abs(float(record["Net Amount"].replace("$", "")))
-			total_btc += float(record["Asset Amount"])
-			btc_price += float(record["Asset Price"].replace("$", "").replace(",", ""))
-			total_transactions += 1
-		if record["Transaction Type"] == "Bitcoin Withdrawal":
-			btc_in_custody += float(record["Asset Amount"])
-	
-	avg_btc_price = btc_price / total_transactions
-	if len(sys.argv) == 2:
-		asset_value = round_down(float(sys.argv[1]) * total_btc, 2)
-		asset_gain = "${}".format(
-						   round_down(asset_value - total_purchase, 2))
-		asset_gain_percentage = "{}%".format(
-									  round_down(
-									  ((asset_value - total_purchase) / total_purchase) * 100, 2
-									  ))
-	
-	total_purchase = "${}".format(total_purchase)
-	avg_btc_price = "${}".format(round_down(avg_btc_price, 2))
+    total_purchase = 0
+    total_btc = 0
+    btc_in_custody = 0
+    total_transactions = 0
+    btc_price = 0
+    avg_btc_price = 0
+    data = csv.DictReader(csv_file)
+    for record in data:
+        if record["Transaction Type"] == "Bitcoin Buy":
+            total_purchase += abs(float(record["Net Amount"].replace("$", "")))
+            total_btc += float(record["Asset Amount"])
+            btc_price += float(record["Asset Price"].replace("$", "").replace(",", ""))
+            total_transactions += 1
+        if record["Transaction Type"] == "Bitcoin Withdrawal":
+            btc_in_custody += float(record["Asset Amount"])
+    
+    avg_btc_price = btc_price / total_transactions
+    if len(sys.argv) == 2:
+        asset_value = round_down(float(sys.argv[1]) * total_btc, 2)
+        asset_gain = "${}".format(
+                           round_down(asset_value - total_purchase, 2))
+        asset_gain_percentage = "{}%".format(
+                                      round_down(
+                                      ((asset_value - total_purchase) / total_purchase) * 100, 2
+                                      ))
+    
+    total_purchase = "${}".format(total_purchase)
+    avg_btc_price = "${}".format(round_down(avg_btc_price, 2))
 
 print()
 print("BTC Report".center(40, " "))
 print("Total purchase: ".rjust(text_allign), total_purchase)
 print("Average BTC price: ".rjust(text_allign), avg_btc_price)
 if len(sys.argv) == 2:
-	print("Asset value: ".rjust(text_allign), asset_value)
-	print("Asset gain($): ".rjust(text_allign), asset_gain)
-	print("Asset gain(%): ".rjust(text_allign), asset_gain_percentage)
+    print("Asset value: ".rjust(text_allign), asset_value)
+    print("Asset gain($): ".rjust(text_allign), asset_gain)
+    print("Asset gain(%): ".rjust(text_allign), asset_gain_percentage)
 print("Total BTC: ".rjust(text_allign), round_down(total_btc, round_decimals))
 print("BTC in custody: ".rjust(text_allign), round_down(btc_in_custody, round_decimals))
 print("Pending withdrawal: ".rjust(text_allign), 
-							round(total_btc - btc_in_custody, round_decimals))
+                            round(total_btc - btc_in_custody, round_decimals))
 print()
