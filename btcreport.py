@@ -122,15 +122,16 @@ def get_report_details(csv_reader, btc_market_price):
     
     report_details[report_fields["asset_value"]] = round_down(float(btc_market_price) * report_details[report_fields["total_btc"]], 2)
     
-    report_details[report_fields["asset_gain_d"]] = "${}".format(
+    report_details[report_fields["asset_gain_d"]] = "${:,}".format(
                     round_down(report_details[report_fields["asset_value"]] - report_details[report_fields["total_purchase"]], 2))
     
     report_details[report_fields["asset_gain_p"]] = "{}%".format(
                     round_down(((report_details[report_fields["asset_value"]] - report_details[report_fields["total_purchase"]]) /
                                     report_details[report_fields["total_purchase"]]) * 100, 2))
     
-    report_details[report_fields["total_purchase"]] = "${}".format(report_details[report_fields["total_purchase"]])
-    report_details[report_fields["avg_btc_price"]] = "${}".format(round_down(report_details[report_fields["avg_btc_price"]], 2))
+    report_details[report_fields["asset_value"]] = "${:,}".format(report_details[report_fields["asset_value"]])
+    report_details[report_fields["total_purchase"]] = "${:,}".format(report_details[report_fields["total_purchase"]])
+    report_details[report_fields["avg_btc_price"]] = "${:,}".format(round_down(report_details[report_fields["avg_btc_price"]], 2))
 
     return report_details
     
