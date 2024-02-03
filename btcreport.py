@@ -170,8 +170,8 @@ def read_csv(cash_app_csv):
     with open(cash_app_csv, "r", encoding="utf-8", newline="") as csv_file:
         return list(csv.DictReader(csv_file))
 
+def main():
 
-if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("csv_file", help="Cash App CSV export")
     parser.add_argument("--report_format", default="html", help="Output report format")
@@ -184,3 +184,6 @@ if __name__ == "__main__":
     btc_market_price = api_backend.get_btc_price()
 
     generate_report(args.csv_file, btc_market_price, args.report_format)
+
+if __name__ == "__main__":
+    main()
