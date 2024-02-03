@@ -25,6 +25,7 @@
 
 # For more information, please refer to <https://unlicense.org>
 
+import os
 import csv
 import math
 import argparse
@@ -32,9 +33,9 @@ from string import Template
 from datetime import datetime
 from collections import OrderedDict
 from dataclasses import dataclass
+import webbrowser
 from prettytable import PrettyTable
 from btcget import *
-
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -133,6 +134,7 @@ def generate_html(report_details):
         ))
 
     print("Generated report file: {}".format(report_html_file))
+    webbrowser.open(f"file://{os.getcwd()}/{report_html_file}")
     
 
 def generate_pdf():
