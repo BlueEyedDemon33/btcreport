@@ -31,10 +31,12 @@ import argparse
 from string import Template
 from datetime import datetime
 from collections import OrderedDict
+from dataclasses import dataclass
 from prettytable import PrettyTable
+from btcget import *
 
 
-html_document = """
+HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -60,8 +62,8 @@ html_document = """
 </html>
 """
 
-report_fields = {
-    "total_purchase": "Total purchase",
+REPORT_FIELDS = {
+    "cost_basis": "Cost Basis",
     "avg_btc_price": "Average BTC price",
     "asset_value": "Asset value",
     "asset_gain_d": "Asset gain($)",
@@ -71,15 +73,54 @@ report_fields = {
     "total_transactions": "Total transactions"
 }
 
-btc_report_file = "btcreport"
+BTC_REPORT_FILE = "btcreport"
+
+
+@dataclass
+class BtcReportData:
+    cost_basis: float = 0
+    avg_btc_price: float = 0
+    asset_value: float = 0
+    asset_gain_d: float = 0
+    asset_gain_p: float = 0
+    total_btc: float = 0
+    btc_in_custody: float = 0
+    total_transactions: int = 0
+    btc_price: float = 0
+
+    def compute_avg_price(self) -> None:
+        self.avg_btc_price = self.btc_price / self.total_transactions
+
+    def compute_asset_value(self, btc_market_price):
+        self.asset_value = btc_market_price * self.total_btc
+
+    def compute_asset_gains(self) -> None:
+        self.asset_gain_d = self.asset_value - self.cost_basis
+        self.asset_gain_p = ((self.asset_value - self.cost_basis) / self.cost_basis) * 100
+
+    def get_report_data(self) -> OrderedDict:
+        d_fmt = "${:,}"
+        p_fmt = "{}%"
+        report_data = OrderedDict({REPORT_FIELDS[key]: None for key in REPORT_FIELDS})
+        report_data[REPORT_FIELDS["cost_basis"]] = d_fmt.format(self.cost_basis)
+        report_data[REPORT_FIELDS["avg_btc_price"]] = d_fmt.format(round_down(self.avg_btc_price, 2))
+        report_data[REPORT_FIELDS["asset_value"]] = d_fmt.format(round_down(self.asset_value, 2))
+        report_data[REPORT_FIELDS["asset_gain_d"]] = d_fmt.format(round_down(self.asset_gain_d, 2))
+        report_data[REPORT_FIELDS["asset_gain_p"]] = p_fmt.format(round_down(self.asset_gain_p, 2))
+        report_data[REPORT_FIELDS["total_btc"]] = round_down(self.total_btc, 7)
+        report_data[REPORT_FIELDS["btc_in_custody"]] = round_down(self.btc_in_custody, 7)
+        report_data[REPORT_FIELDS["total_transactions"]] = self.total_transactions
+
+        return report_data
+
 
 def round_down(n, decimals=0):
     multiplier = 10**decimals
     return math.floor(n * multiplier) / multiplier
 
 def generate_html(report_details):
-    report_html_file = btc_report_file + ".html"
-    template = Template(html_document)
+    report_html_file = BTC_REPORT_FILE + ".html"
+    template = Template(HTML_TEMPLATE)
     table = PrettyTable()
     table.header = False
     for field in report_details:
@@ -98,60 +139,46 @@ def generate_pdf():
     pass
 
 def get_report_details(csv_reader, btc_market_price):
-    report_details = OrderedDict({
-        report_fields["total_purchase"]: 0,
-        report_fields["avg_btc_price"]: 0,
-        report_fields["asset_value"]: 0,
-        report_fields["asset_gain_d"]: 0,
-        report_fields["asset_gain_p"]: 0,
-        report_fields["total_btc"]: 0,
-        report_fields["btc_in_custody"]: 0,
-        report_fields["total_transactions"]: 0
-    })
 
-    btc_price = 0
+    report_data = BtcReportData()
+
     for record in csv_reader:
         if record["Transaction Type"] == "Bitcoin Buy":
-            report_details[report_fields["total_purchase"]] += abs(float(record["Net Amount"].replace("$", "")))
-            report_details[report_fields["total_btc"]] += float(record["Asset Amount"])
-            btc_price += float(record["Asset Price"].replace("$", "").replace(",", ""))
-            report_details[report_fields["total_transactions"]] += 1
+            report_data.cost_basis += abs(float(record["Net Amount"].replace("$", "")))
+            report_data.total_btc += float(record["Asset Amount"])
+            report_data.btc_price += float(record["Asset Price"].replace("$", "").replace(",", ""))
+            report_data.total_transactions += 1
         if record["Transaction Type"] == "Bitcoin Withdrawal":
-            report_details[report_fields["btc_in_custody"]] += float(record["Asset Amount"])
+            report_data.btc_in_custody += float(record["Asset Amount"])
     
-    report_details[report_fields["avg_btc_price"]] = btc_price / report_details[report_fields["total_transactions"]]
-    report_details[report_fields["total_btc"]] = round_down(report_details[report_fields["total_btc"]], 7)
-    report_details[report_fields["btc_in_custody"]] = round_down(report_details[report_fields["btc_in_custody"]], 7)
-    
-    report_details[report_fields["asset_value"]] = round_down(float(btc_market_price) * report_details[report_fields["total_btc"]], 2)
-    
-    report_details[report_fields["asset_gain_d"]] = "${:,}".format(
-                    round_down(report_details[report_fields["asset_value"]] - report_details[report_fields["total_purchase"]], 2))
-    
-    report_details[report_fields["asset_gain_p"]] = "{}%".format(
-                    round_down(((report_details[report_fields["asset_value"]] - report_details[report_fields["total_purchase"]]) /
-                                    report_details[report_fields["total_purchase"]]) * 100, 2))
-    
-    report_details[report_fields["asset_value"]] = "${:,}".format(report_details[report_fields["asset_value"]])
-    report_details[report_fields["total_purchase"]] = "${:,}".format(report_details[report_fields["total_purchase"]])
-    report_details[report_fields["avg_btc_price"]] = "${:,}".format(round_down(report_details[report_fields["avg_btc_price"]], 2))
+    report_data.compute_asset_value(btc_market_price)
+    report_data.compute_asset_gains()
+    report_data.compute_avg_price()
 
-    return report_details
+    return report_data.get_report_data()
     
 
-def generate_report(cash_app_csv, btc_market_price):
+def generate_report(cash_app_csv, btc_market_price, report_format="html"):
+    csv_reader = read_csv(cash_app_csv)
+    report = get_report_details(csv_reader, btc_market_price)
+    if report_format == "html":
+        generate_html(report)
+
+def read_csv(cash_app_csv):
     with open(cash_app_csv, "r", encoding="utf-8", newline="") as csv_file:
-        data = csv.DictReader(csv_file)
-        return get_report_details(data, btc_market_price)
+        return list(csv.DictReader(csv_file))
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("csv_file", help="Cash App CSV export")
-    parser.add_argument("btc_price", help="BTC market price")
     parser.add_argument("--report_format", default="html", help="Output report format")
     args = parser.parse_args()
+    config = load_config()
+    api_backend = ApiBackendFactory.create_backend(config["backend"],
+                                                    config["key"],
+                                                    config["currency"])
 
-    report = generate_report(args.csv_file, args.btc_price)
-    if args.report_format == "html":
-        generate_html(report)
+    btc_market_price = api_backend.get_btc_price()
+
+    generate_report(args.csv_file, btc_market_price, args.report_format)
