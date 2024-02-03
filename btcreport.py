@@ -37,6 +37,10 @@ import webbrowser
 from prettytable import PrettyTable
 from btcget import *
 
+
+__version__ = "0.0.1"
+
+
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="en">
@@ -172,8 +176,9 @@ def read_csv(cash_app_csv):
 
 def main():
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(prog="btcreport")
     parser.add_argument("csv_file", help="Cash App CSV export")
+    parser.add_argument("-v", "--version", action="version", version="%(prog)s {}".format(__version__))
     parser.add_argument("--report_format", default="html", help="Output report format")
     args = parser.parse_args()
     config = load_config()
