@@ -2,3 +2,6 @@
 *.html
 *.pdf
 .DS_Store
+*egg*
+build
+dist
