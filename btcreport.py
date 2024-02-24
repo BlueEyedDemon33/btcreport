@@ -29,6 +29,7 @@ import os
 import csv
 import math
 import argparse
+from pathlib import Path
 from string import Template
 from datetime import datetime
 from collections import OrderedDict
@@ -38,7 +39,7 @@ from prettytable import PrettyTable
 from btcget import *
 
 
-__version__ = "0.0.1"
+__version__ = "0.1.0"
 
 
 HTML_TEMPLATE = """
@@ -48,14 +49,7 @@ HTML_TEMPLATE = """
     <meta charset="utf-8">
     <title>BTC Report</title>
     <style>
-        table, th, td {
-            border: 1px solid black;
-            border-collapse: collapse;
-        }
-        th, td {
-            padding: 8px;
-            text-align: right;
-        }
+        $css_template
     </style>
 </head>
 <body>
@@ -66,6 +60,22 @@ HTML_TEMPLATE = """
 </body>
 </html>
 """
+
+CSS_TEMPLATE_BASIC = """
+table, th, td {
+    border: 1px solid black;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 8px;
+    text-align: right;
+}
+"""
+
+CSS_TEMPLATES = {
+    "basic": CSS_TEMPLATE_BASIC
+}
 
 REPORT_FIELDS = {
     "cost_basis": "Cost Basis",
@@ -78,6 +88,7 @@ REPORT_FIELDS = {
     "total_transactions": "Total transactions"
 }
 
+BTC_REPORT_CONFIG = Path.joinpath(Path.home(), ".btcreport")
 BTC_REPORT_FILE = "btcreport"
 
 
@@ -123,7 +134,7 @@ def round_down(n, decimals=0):
     multiplier = 10**decimals
     return math.floor(n * multiplier) / multiplier
 
-def generate_html(report_details):
+def generate_html(report_details, css_template, open_page=True):
     report_html_file = BTC_REPORT_FILE + ".html"
     template = Template(HTML_TEMPLATE)
     table = PrettyTable()
@@ -133,12 +144,14 @@ def generate_html(report_details):
     
     with open(report_html_file, "w", encoding="utf-8") as html_file:
         html_file.write(template.substitute(
+            css_template = css_template,
             table = table.get_html_string(),
             timestamp = datetime.now().strftime("%c.")
         ))
 
     print("Generated report file: {}".format(report_html_file))
-    webbrowser.open(f"file://{os.getcwd()}/{report_html_file}")
+    if open_page:
+        webbrowser.open(f"file://{os.getcwd()}/{report_html_file}")
     
 
 def generate_pdf():
@@ -164,15 +177,21 @@ def get_report_details(csv_reader, btc_market_price):
     return report_data.get_report_data()
     
 
-def generate_report(cash_app_csv, btc_market_price, report_format="html"):
+def generate_report(cash_app_csv, btc_market_price, report_format, template):
     csv_reader = read_csv(cash_app_csv)
     report = get_report_details(csv_reader, btc_market_price)
     if report_format == "html":
-        generate_html(report)
+        generate_html(report, template)
 
 def read_csv(cash_app_csv):
     with open(cash_app_csv, "r", encoding="utf-8", newline="") as csv_file:
         return list(csv.DictReader(csv_file))
+    
+def read_css_template():
+    css_template = load_config(BTC_REPORT_CONFIG)["css_template_file"]
+
+    with open(css_template, encoding="utf-8") as css:
+        return css.read()
 
 def main():
 
@@ -180,7 +199,14 @@ def main():
     parser.add_argument("csv_file", help="Cash App CSV export")
     parser.add_argument("-v", "--version", action="version", version="%(prog)s {}".format(__version__))
     parser.add_argument("--report_format", default="html", help="Output report format")
+    parser.add_argument("--template", default="basic", help="CSS template")
     args = parser.parse_args()
+    
+    css_template = CSS_TEMPLATES[args.template]
+    if BTC_REPORT_CONFIG.is_file():
+        css_template = read_css_template()
+    
+    # btcget config
     config = load_config()
     api_backend = ApiBackendFactory.create_backend(config["backend"],
                                                     config["key"],
@@ -188,7 +214,7 @@ def main():
 
     btc_market_price = api_backend.get_btc_price()
 
-    generate_report(args.csv_file, btc_market_price, args.report_format)
+    generate_report(args.csv_file, btc_market_price, args.report_format, css_template)
 
 if __name__ == "__main__":
     main()
