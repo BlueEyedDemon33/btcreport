@@ -1,10 +1,13 @@
 from setuptools import setup
-from btcreport import __version__
 
 setup(
     name="btcreport",
-    version=__version__,
+    version="0.1.0",
     py_modules=["btcreport"],
+    install_requires=[
+        "btcget==0.0.3",
+        "prettytable==3.9.0"
+    ],
     entry_points={
         "console_scripts":[
             "btcreport=btcreport:main"
