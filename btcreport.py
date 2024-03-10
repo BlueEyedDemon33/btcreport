@@ -39,7 +39,7 @@ from prettytable import PrettyTable
 from btcget import *
 
 
-__version__ = "0.1.0"
+progver="0.1.1"
 
 
 HTML_TEMPLATE = """
@@ -86,7 +86,8 @@ REPORT_FIELDS = {
     "asset_gain_p": "Asset gain(%)",
     "total_btc": "Total BTC",
     "btc_in_custody": "BTC in custody",
-    "total_transactions": "Total transactions"
+    "total_transactions": "Total transactions",
+    "transaction_fees": "Transaction Fees"
 }
 
 BTC_REPORT_CONFIG = Path.joinpath(Path.home(), ".btcreport")
@@ -104,6 +105,7 @@ class BtcReportData:
     btc_in_custody: float = 0
     total_transactions: int = 0
     btc_price: float = 0
+    transaction_fees: float = 0
 
     def compute_avg_price(self) -> None:
         self.avg_btc_price = self.btc_price / self.total_transactions
@@ -119,7 +121,7 @@ class BtcReportData:
         d_fmt = "${:,}"
         p_fmt = "{}%"
         report_data = OrderedDict({REPORT_FIELDS[key]: None for key in REPORT_FIELDS})
-        report_data[REPORT_FIELDS["cost_basis"]] = d_fmt.format(self.cost_basis)
+        report_data[REPORT_FIELDS["cost_basis"]] = d_fmt.format(round_down(self.cost_basis, 2))
         report_data[REPORT_FIELDS["avg_btc_price"]] = d_fmt.format(round_down(self.avg_btc_price, 2))
         report_data[REPORT_FIELDS["asset_value"]] = d_fmt.format(round_down(self.asset_value, 2))
         report_data[REPORT_FIELDS["asset_gain_d"]] = d_fmt.format(round_down(self.asset_gain_d, 2))
@@ -127,6 +129,7 @@ class BtcReportData:
         report_data[REPORT_FIELDS["total_btc"]] = round_down(self.total_btc, 7)
         report_data[REPORT_FIELDS["btc_in_custody"]] = round_down(self.btc_in_custody, 7)
         report_data[REPORT_FIELDS["total_transactions"]] = self.total_transactions
+        report_data[REPORT_FIELDS["transaction_fees"]] = d_fmt.format(round_down(self.transaction_fees, 2))
 
         return report_data
 
@@ -168,6 +171,7 @@ def get_report_details(csv_reader, btc_market_price):
             report_data.total_btc += float(record["Asset Amount"])
             report_data.btc_price += float(record["Asset Price"].replace("$", "").replace(",", ""))
             report_data.total_transactions += 1
+            report_data.transaction_fees += abs(float(record["Fee"].replace("$", "")))
         if record["Transaction Type"] == "Bitcoin Withdrawal":
             report_data.btc_in_custody += float(record["Asset Amount"])
     
@@ -198,7 +202,7 @@ def main():
 
     parser = argparse.ArgumentParser(prog="btcreport")
     parser.add_argument("csv_file", help="Cash App CSV export")
-    parser.add_argument("-v", "--version", action="version", version="%(prog)s {}".format(__version__))
+    parser.add_argument("-v", "--version", action="version", version="%(prog)s {}".format(progver))
     parser.add_argument("--report_format", default="html", help="Output report format")
     parser.add_argument("--template", default="basic", help="CSS template")
     args = parser.parse_args()

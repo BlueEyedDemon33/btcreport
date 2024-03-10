@@ -1,8 +1,10 @@
 from setuptools import setup
 
+progver="0.1.1"
+
 setup(
     name="btcreport",
-    version="0.1.0",
+    version=progver,
     py_modules=["btcreport"],
     install_requires=[
         "btcget==0.0.*",
